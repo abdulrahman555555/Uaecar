@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UAE Motor Insurance - Master Rate Matrix Dashboard</title>
+    <style>
+        :root {
+            --bg-body: #0b1120;
+            --bg-panel: #111827;
+            --bg-header: #1e293b;
+            --border-color: #334155;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --tpl-color: #3b82f6;
+            --comp-color: #f59e0b;
+            --gross-color: #38bdf8;
+            --net-color: #34d399;
+            --danger: #ef4444;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', 'Segoe UI', Roboto, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-primary);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Top Navigation Bar */
+        .topbar {
+            background: var(--bg-panel);
+            border-bottom: 1px solid var(--border-color);
+            padding: 14px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+            flex-shrink: 0;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .brand h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+        }
+
+        /* TPL vs Comprehensive Tabs */
+        .mode-tabs {
+            display: flex;
+            background: var(--bg-body);
+            padding: 4px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .tab-btn {
+            padding: 8px 20px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-weight: 700;
+            font-size: 0.85rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tab-btn.active.tpl {
+            background: var(--tpl-color);
+            color: #fff;
+        }
+
+        .tab-btn.active.comp {
+            background: var(--comp-color);
+            color: #000;
+        }
+
+        /* Right Toolbar */
+        .toolbar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .search-box {
+            background: var(--bg-body);
+            border: 1px solid var(--border-color);
+            color: #fff;
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            width: 210px;
+            outline: none;
+        }
+
+        .search-box:focus {
+            border-color: var(--tpl-color);
+        }
+
+        .btn {
+            padding: 8px 14px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-header);
+            color: #fff;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.15s;
+        }
+
+        .btn:hover {
+            border-color: #64748b;
+        }
+
+        .btn-add {
+            background: #10b981;
+            border-color: #10b981;
+            color: #000;
+        }
+
+        .btn-add:hover {
+            background: #059669;
+            color: #fff;
+        }
+
+        /* Add Portal Bar */
+        .add-bar {
+            display: none;
+            background: #1e293b;
+            padding: 10px 24px;
+            border-bottom: 1px solid var(--border-color);
+            gap: 10px;
+            align-items: center;
+        }
+
+        .add-bar.open {
+            display: flex;
+        }
+
+        /* Legend Bar */
+        .legend-bar {
+            background: #0f172a;
+            padding: 8px 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            flex-shrink: 0;
+        }
+
+        .legend-items {
+            display: flex;
+            gap: 20px;
+        }
+
+        .dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 2px;
+            margin-right: 5px;
+        }
+
+        /* Table Container */
+        .table-wrapper {
+            flex: 1;
+            overflow: auto;
+            padding: 0 24px 24px 24px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin-top: 16px;
+            min-width: 1320px;
+        }
+
+        th, td {
+            border-bottom: 1px solid var(--border-color);
+            border-right: 1px solid var(--border-color);
+            padding: 8px;
+            text-align: center;
+        }
+
+        th:first-child, td:first-child {
+            border-left: 1px solid var(--border-color);
+        }
+
+        /* Sticky Headers */
+        thead tr:first-child th {
+            position: sticky;
+            top: 0;
+            background: #1e293b;
+            z-index: 20;
+            border-top: 1px solid var(--border-color);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 10px 6px;
+        }
+
+        thead tr:nth-child(2) th {
+            position: sticky;
+            top: 39px;
+            background: #162032;
+            z-index: 20;
+            font-size: 0.78rem;
+            color: #cbd5e1;
+            padding: 7px 4px;
+        }
+
+        /* Sticky First Column (Company Name) */
+        th.sticky-col, td.sticky-col {
+            position: sticky;
+            left: 0;
+            z-index: 15;
+            background: #111827;
+            text-align: left;
+            min-width: 190px;
+            max-width: 190px;
+            padding-left: 14px;
+            border-right: 2px solid #475569;
+        }
+
+        thead tr:first-child th.sticky-col,
+        thead tr:nth-child(2) th.sticky-col {
+            z-index: 30;
+            background: #1e293b;
+        }
+
+        /* Group Header Colors */
+        .grp-saloon { color: #60a5fa; }
+        .grp-station { color: #c084fc; }
+        .grp-pickup { color: #fbbf24; }
+
+        /* Row Hover */
+        tbody tr:hover td {
+            background-color: #172033;
+        }
+        tbody tr:hover td.sticky-col {
+            background-color: #1e293b;
+        }
+
+        .company-cell {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 700;
+            font-size: 0.9rem;
+            color: #f8fafc;
+        }
+
+        .del-icon {
+            background: transparent;
+            border: none;
+            color: #64748b;
+            cursor: pointer;
+            font-size: 0.85rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .del-icon:hover {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--danger);
+        }
+
+        /* Dual Rate Input Cell (Gross & Net) */
+        .dual-cell {
+            display: flex;
+            gap: 4px;
+            justify-content: center;
+        }
+
+        .rate-input {
+            width: 68px;
+            background: #0b1120;
+            border: 1px solid #293548;
+            border-radius: 4px;
+            padding: 6px 4px;
+            text-align: center;
+            font-size: 0.82rem;
+            font-weight: 600;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+
+        .rate-input.gross {
+            color: var(--gross-color);
+            border-bottom: 2px solid rgba(56, 189, 248, 0.4);
+        }
+
+        .rate-input.net {
+            color: var(--net-color);
+            border-bottom: 2px solid rgba(52, 211, 153, 0.4);
+        }
+
+        .rate-input:focus {
+            border-color: #fff;
+            background: #1e293b;
+        }
+
+        .rate-input::placeholder {
+            color: #475569;
+            font-weight: 400;
+            font-size: 0.72rem;
+        }
+
+        /* Save Indicator */
+        .save-status {
+            color: #34d399;
+            font-weight: 600;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .save-status.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Top Bar -->
+    <div class="topbar">
+        <div class="brand">
+            <h1>UAE INSURANCE RATE MATRIX</h1>
+            <div class="mode-tabs">
+                <button class="tab-btn active tpl" id="tabTpl" onclick="switchMode('tpl')">TPL RATES</button>
+                <button class="tab-btn comp" id="tabComp" onclick="switchMode('comp')">COMPREHENSIVE RATES</button>
+            </div>
+        </div>
+
+        <div class="toolbar">
+            <input type="text" class="search-box" id="searchBox" placeholder="Search company..." onkeyup="renderTable()">
+            <button class="btn btn-add" onclick="toggleAddBar()">+ Add Company</button>
+            <button class="btn" onclick="exportBackup()">Export Backup</button>
+            <button class="btn" onclick="document.getElementById('importInput').click()">Import</button>
+            <input type="file" id="importInput" accept=".json" style="display:none" onchange="importBackup(event)">
+        </div>
+    </div>
+
+    <!-- Add New Portal Bar -->
+    <div class="add-bar" id="addBar">
+        <input type="text" class="search-box" id="newCompanyInput" placeholder="Enter Company Name (e.g. Sukoon, Salama)..." style="width: 300px;">
+        <button class="btn btn-add" onclick="addCompany()">Save Company</button>
+        <button class="btn" onclick="toggleAddBar()">Cancel</button>
+    </div>
+
+    <!-- Legend & Status Bar -->
+    <div class="legend-bar">
+        <div class="legend-items">
+            <span><span class="dot" style="background: var(--gross-color);"></span>Left Box = <strong>GROSS RATE</strong></span>
+            <span><span class="dot" style="background: var(--net-color);"></span>Right Box = <strong>NET RATE</strong></span>
+            <span>Current View: <strong id="currentModeLabel" style="color: var(--tpl-color);">TPL (Third Party Liability)</strong></span>
+        </div>
+        <div class="save-status" id="saveStatus">✓ All changes saved automatically</div>
+    </div>
+
+    <!-- Matrix Table -->
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th rowspan="2" class="sticky-col">Company / Portal</th>
+                    <th colspan="3" class="grp-saloon">SALOON</th>
+                    <th colspan="3" class="grp-station">STATION / SUV</th>
+                    <th colspan="1" class="grp-pickup">PICK-UP</th>
+                </tr>
+                <tr>
+                    <!-- Saloon Sub-headers -->
+                    <th>V4 <br><small style="color:#64748b">Gross | Net</small></th>
+                    <th>V6 <br><small style="color:#64748b">Gross | Net</small></th>
+                    <th>V8 <br><small style="color:#64748b">Gross | Net</small></th>
+                    <!-- Station Sub-headers -->
+                    <th>V4 <br><small style="color:#64748b">Gross | Net</small></th>
+                    <th>V6 <br><small style="color:#64748b">Gross | Net</small></th>
+                    <th>V8 <br><small style="color:#64748b">Gross | Net</small></th>
+                    <!-- Pick-Up Sub-header -->
+                    <th>ALL / STD <br><small style="color:#64748b">Gross | Net</small></th>
+                </tr>
+            </thead>
+            <tbody id="matrixBody"></tbody>
+        </table>
+    </div>
+
+<script>
+    const STORAGE_KEY = "uae_insurance_matrix_v2";
+    let currentMode = "tpl"; // 'tpl' or 'comp'
+
+    const defaultCompanies = [
+        "Methaq", "United", "DNI", "Al Sagr", "Qatar (QIC)", 
+        "Al Dhafra", "Orient", "Al Ain", "Alliance", 
+        "Insurance House", "Adamjee", "RAK Insurance", "Al Wathba", "Emirates"
+    ];
+
+    const categories = ["saloon_v4", "saloon_v6", "saloon_v8", "station_v4", "station_v6", "station_v8", "pickup"];
+
+    function createEmptyRates() {
+        const obj = {};
+        categories.forEach(cat => {
+            obj[cat] = { gross: "", net: "" };
+        });
+        return obj;
+    }
+
+    // Initialize Data
+    let companiesData = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (!companiesData || !Array.isArray(companiesData)) {
+        companiesData = defaultCompanies.map((name, idx) => ({
+            id: Date.now() + idx,
+            name: name,
+            tpl: createEmptyRates(),
+            comp: createEmptyRates()
+        }));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(companiesData));
+    }
+
+    function saveData() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(companiesData));
+        const status = document.getElementById("saveStatus");
+        status.classList.add("show");
+        clearTimeout(window.saveTimer);
+        window.saveTimer = setTimeout(() => status.classList.remove("show"), 1500);
+    }
+
+    function switchMode(mode) {
+        currentMode = mode;
+        document.getElementById("tabTpl").classList.toggle("active", mode === "tpl");
+        document.getElementById("tabComp").classList.toggle("active", mode === "comp");
+
+        const label = document.getElementById("currentModeLabel");
+        if (mode === "tpl") {
+            label.textContent = "TPL (Third Party Liability)";
+            label.style.color = "var(--tpl-color)";
+        } else {
+            label.textContent = "COMPREHENSIVE";
+            label.style.color = "var(--comp-color)";
+        }
+        renderTable();
+    }
+
+    function updateCell(id, cat, type, value) {
+        const company = companiesData.find(c => c.id === id);
+        if (company) {
+            if (!company[currentMode]) company[currentMode] = createEmptyRates();
+            if (!company[currentMode][cat]) company[currentMode][cat] = { gross: "", net: "" };
+            company[currentMode][cat][type] = value;
+            saveData();
+        }
+    }
+
+    function renderTable() {
+        const tbody = document.getElementById("matrixBody");
+        const filter = document.getElementById("searchBox").value.toLowerCase();
+        tbody.innerHTML = "";
+
+        const filtered = companiesData.filter(c => c.name.toLowerCase().includes(filter));
+
+        filtered.forEach(company => {
+            const rates = company[currentMode] || createEmptyRates();
+            const tr = document.createElement("tr");
+
+            let cellsHtml = `
+                <td class="sticky-col">
+                    <div class="company-cell">
+                        <span>${company.name}</span>
+                        <button class="del-icon" onclick="deleteCompany(${company.id})" title="Delete ${company.name}">✕</button>
+                    </div>
+                </td>
+            `;
+
+            categories.forEach(cat => {
+                const gVal = (rates[cat] && rates[cat].gross) ? rates[cat].gross : "";
+                const nVal = (rates[cat] && rates[cat].net) ? rates[cat].net : "";
+                cellsHtml += `
+                    <td>
+                        <div class="dual-cell">
+                            <input type="text" class="rate-input gross" placeholder="Gross" 
+                                value="${gVal}" oninput="updateCell(${company.id}, '${cat}', 'gross', this.value)">
+                            <input type="text" class="rate-input net" placeholder="Net" 
+                                value="${nVal}" oninput="updateCell(${company.id}, '${cat}', 'net', this.value)">
+                        </div>
+                    </td>
+                `;
+            });
+
+            tr.innerHTML = cellsHtml;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function toggleAddBar() {
+        const bar = document.getElementById("addBar");
+        bar.classList.toggle("open");
+        if (bar.classList.contains("open")) {
+            document.getElementById("newCompanyInput").focus();
+        }
+    }
+
+    function addCompany() {
+        const input = document.getElementById("newCompanyInput");
+        const name = input.value.trim();
+        if (!name) return alert("Please enter company name!");
+
+        companiesData.push({
+            id: Date.now(),
+            name: name,
+            tpl: createEmptyRates(),
+            comp: createEmptyRates()
+        });
+
+        saveData();
+        input.value = "";
+        toggleAddBar();
+        renderTable();
+    }
+
+    function deleteCompany(id) {
+        const comp = companiesData.find(c => c.id === id);
+        if (confirm(`Delete "${comp.name}" from rate sheet?`)) {
+            companiesData = companiesData.filter(c => c.id !== id);
+            saveData();
+            renderTable();
+        }
+    }
+
+    function exportBackup() {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(companiesData, null, 2));
+        const a = document.createElement("a");
+        a.href = dataStr;
+        a.download = "uae_insurance_matrix_backup.json";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+    }
+
+    function importBackup(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const parsed = JSON.parse(e.target.result);
+                if (Array.isArray(parsed)) {
+                    companiesData = parsed;
+                    saveData();
+                    renderTable();
+                    alert("Backup restored successfully!");
+                } else {
+                    alert("Invalid JSON file.");
+                }
+            } catch {
+                alert("Failed to read backup file.");
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    // Initial render
+    renderTable();
+</script>
+</body>
+</html>
